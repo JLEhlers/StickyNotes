@@ -59,3 +59,72 @@ class NoteViewTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Test Note")
         self.assertContains(response, "This is a test note.")
+
+class NoteCreateTest(TestCase):
+
+    def test_create_note(self):
+        # Create an Author object
+        author = Author.objects.create(name="Test Author")
+
+        # Create a new Note
+        note = Note.objects.create(
+            title="New Note",
+            content="This is a new note.",
+            author=author
+        )
+
+        # Check that the Note was created
+        self.assertEqual(Note.objects.count(), 1)
+        self.assertEqual(note.title, "New Note")
+        self.assertEqual(note.content, "This is a new note.")
+
+
+class NoteUpdateTest(TestCase):
+
+    def setUp(self):
+        # Create an Author object
+        author = Author.objects.create(name="Test Author")
+
+        # Create a Note object
+        self.note = Note.objects.create(
+            title="Test Note",
+            content="This is a test note.",
+            author=author
+        )
+
+    def test_update_note(self):
+        # Change the Note details
+        self.note.title = "Updated Note"
+        self.note.content = "This note has been updated."
+        self.note.save()
+
+        # Get the updated Note
+        note = Note.objects.get(id=self.note.id)
+
+        # Check that the Note was updated
+        self.assertEqual(note.title, "Updated Note")
+        self.assertEqual(
+            note.content,
+            "This note has been updated."
+        )
+
+
+class NoteDeleteTest(TestCase):
+
+    def setUp(self):
+        # Create an Author object
+        author = Author.objects.create(name="Test Author")
+
+        # Create a Note object
+        self.note = Note.objects.create(
+            title="Test Note",
+            content="This is a test note.",
+            author=author
+        )
+
+    def test_delete_note(self):
+        # Delete the Note
+        self.note.delete()
+
+        # Check that the Note no longer exists
+        self.assertEqual(Note.objects.count(), 0)
