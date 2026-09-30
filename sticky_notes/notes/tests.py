@@ -28,103 +28,127 @@ class NoteModelTest(TestCase):
         self.assertEqual(note.content, "This is a test note.")
 
 
-class NoteViewTest(TestCase):
+class NoteCreateTest(TestCase):
 
     def setUp(self):
         # Create an Author object
-        author = Author.objects.create(name="Test Author")
-
-        # Create a Note object for testing views
-        Note.objects.create(
-            title="Test Note",
-            content="This is a test note.",
-            author=author
-        )
-
-    def test_note_list_view(self):
-        # Test the note-list view
-        response = self.client.get(reverse("note_list"))
-
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Test Note")
-
-    def test_note_detail_view(self):
-        # Test the note-detail view
-        note = Note.objects.get(id=1)
-
-        response = self.client.get(
-            reverse("note_detail", args=[str(note.id)])
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, "Test Note")
-        self.assertContains(response, "This is a test note.")
-
-class NoteCreateTest(TestCase):
+        self.author = Author.objects.create(name="Test Author")
 
     def test_create_note(self):
-        # Create an Author object
-        author = Author.objects.create(name="Test Author")
-
-        # Create a new Note
-        note = Note.objects.create(
-            title="New Note",
-            content="This is a new note.",
-            author=author
+        # Submit the create form
+        response = self.client.post(
+            reverse("note_create"),
+            {
+                "title": "New Note",
+                "content": "This is a new note.",
+                "author": self.author.id
+            }
         )
+
+        # Check that the user is redirected after creating the note
+        self.assertEqual(response.status_code, 302)
 
         # Check that the Note was created
         self.assertEqual(Note.objects.count(), 1)
+
+        note = Note.objects.first()
         self.assertEqual(note.title, "New Note")
         self.assertEqual(note.content, "This is a new note.")
+
+    def test_create_note_invalid_form(self):
+        # Submit an empty form
+        response = self.client.post(
+            reverse("note_create"),
+            {
+                "title": "",
+                "content": ""
+            }
+        )
+
+        # Check that the form is rejected
+        self.assertEqual(response.status_code, 200)
+
+        # Check that no Note was created
+        self.assertEqual(Note.objects.count(), 0)
 
 
 class NoteUpdateTest(TestCase):
 
     def setUp(self):
         # Create an Author object
-        author = Author.objects.create(name="Test Author")
+        self.author = Author.objects.create(name="Test Author")
 
         # Create a Note object
         self.note = Note.objects.create(
             title="Test Note",
             content="This is a test note.",
-            author=author
+            author=self.author
         )
 
     def test_update_note(self):
-        # Change the Note details
-        self.note.title = "Updated Note"
-        self.note.content = "This note has been updated."
-        self.note.save()
+        # Submit the edit form
+        response = self.client.post(
+            reverse("note_update", args=[self.note.id]),
+            {
+                "title": "Updated Note",
+                "content": "This note has been updated.",
+                "author": self.author.id
+            }
+        )
+
+        # Check that the user is redirected
+        self.assertEqual(response.status_code, 302)
 
         # Get the updated Note
-        note = Note.objects.get(id=self.note.id)
+        self.note.refresh_from_db()
 
         # Check that the Note was updated
-        self.assertEqual(note.title, "Updated Note")
+        self.assertEqual(self.note.title, "Updated Note")
         self.assertEqual(
-            note.content,
+            self.note.content,
             "This note has been updated."
         )
+
+    def test_update_missing_note(self):
+        # Try to update a Note that does not exist
+        response = self.client.get(
+            reverse("note_update", args=[9999])
+        )
+
+        # Check for a 404 response
+        self.assertEqual(response.status_code, 404)
 
 
 class NoteDeleteTest(TestCase):
 
     def setUp(self):
         # Create an Author object
-        author = Author.objects.create(name="Test Author")
+        self.author = Author.objects.create(name="Test Author")
 
         # Create a Note object
         self.note = Note.objects.create(
             title="Test Note",
             content="This is a test note.",
-            author=author
+            author=self.author
         )
 
     def test_delete_note(self):
-        # Delete the Note
-        self.note.delete()
+        # Submit the delete request
+        response = self.client.post(
+            reverse("note_delete", args=[self.note.id])
+        )
 
-        # Check that the Note no longer exists
+        # Check that the user is redirected
+        self.assertEqual(response.status_code, 302)
+
+        # Check that the Note was deleted
         self.assertEqual(Note.objects.count(), 0)
+
+    def test_delete_missing_note(self):
+        # Try to delete a Note that does not exist
+        response = self.client.post(
+            reverse("note_delete", args=[9999])
+        )
+
+        # Check for a 404 response
+        self.assertEqual(response.status_code, 404)
